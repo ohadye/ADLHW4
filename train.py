@@ -13,7 +13,7 @@ batch_size = 4
 learning_rate = 0.001
 num_epochs = 5
 seed = 1
-lambda_recon = 1.0  # weighting term — tune this
+lambda_recon = 0.3
 
 
 torch.manual_seed(seed)

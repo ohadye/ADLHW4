@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 seed = 1
 num_epochs = 5
-lambda_recon = 1.0
+lambda_recon = 0.1
 torch.manual_seed(seed)
 transform = v2.Compose([
     v2.ToImage(),

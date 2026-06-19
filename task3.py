@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import math
 
-seed = 1
+seed = 6
 
 torch.manual_seed(seed)
 transform = v2.Compose([
