@@ -43,33 +43,29 @@ class Net(nn.Module):
         return class_logits, reconstructed
 
     def task3(self, x):
-        # Encoder forward pass, keeping sizes + indices for unpooling
-        x1 = F.relu(self.conv1(x)) #z(1)
+        x1 = F.relu(self.conv1(x))
         size1 = x1.size()
-        first_channel = x1
         x1_pooled, idx1 = self.pool(x1)
-        reconstructed1 = []
-        reconstructed2 = []
-        channel_isolated1 = torch.zeros(6, 14, 14, 6)
 
+        reconstructed1 = []
         for c in range(6):
-            channel_isolated1[c, :, :, c] = x1_pooled[:, :, c]
-            d = self.unpool(channel_isolated1[c], idx1, output_size=size1)
-            reconstructed1.append(self.deconv1(F.relu(d)))  # squashes to [0,1] for image output
+            channel_isolated = torch.zeros_like(x1_pooled)
+            channel_isolated[:, c, :, :] = x1_pooled[:, c, :, :]
+            d = self.unpool(channel_isolated, idx1, output_size=size1)
+            reconstructed1.append(self.deconv1(F.relu(d)))
 
         x2 = F.relu(self.conv2(x1_pooled))
         size2 = x2.size()
-        x2_pooled, idx2 = self.pool(x2) #(5x5x16)
+        x2_pooled, idx2 = self.pool(x2)
 
-        # matrix shape: (5, 5, 16)
-        channel_isolated2 = torch.zeros(16, 5, 5, 16)
-
-        for c in range(16):
-            channel_isolated2[c, :, :, c] = x2_pooled[:, :, c]
-            d = self.unpool(channel_isolated2[c], idx2, output_size=size2)
+        reconstructed2 = []
+        for c in range(3):  # only first 3 channels of conv2's 16
+            channel_isolated = torch.zeros_like(x2_pooled)
+            channel_isolated[:, c, :, :] = x2_pooled[:, c, :, :]
+            d = self.unpool(channel_isolated, idx2, output_size=size2)
             d = self.deconv2(F.relu(d))
             d = self.unpool(d, idx1, output_size=size1)
-            reconstructed2.append(self.deconv1(F.relu(d)))  # squashes to [0,1] for image output
+            reconstructed2.append(self.deconv1(F.relu(d)))
 
         return reconstructed1, reconstructed2
 
