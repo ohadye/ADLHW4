@@ -31,37 +31,16 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-from Conv import NetBase
-net = NetBase()
+from Conv import Net
+net = Net()
+net.load_state_dict(torch.load('./cifar_net.pt', weights_only=True))
 
 
-criterion = nn.CrossEntropyLoss()
+criterion_cls = nn.CrossEntropyLoss()
+criterion_recon = nn.MSELoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
-net.train()
-for epoch in range(2):  # loop over the dataset multiple times
 
-    running_loss = 0.0
-    for i, data in enumerate(trainloader, 0):
-        # get the inputs; data is a list of [inputs, labels]
-        inputs, labels = data
-
-        # zero the parameter gradients
-        optimizer.zero_grad()
-
-        # forward + backward + optimize
-        outputs = net(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        # print statistics
-        running_loss += loss.item()
-        if i % 2000 == 1999:    # print every 2000 mini-batches
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
-            running_loss = 0.0
-
-print('Finished Training')
 
 net.eval()
 
@@ -72,9 +51,9 @@ with torch.no_grad():
     for data in testloader:
         images, labels = data
         # calculate outputs by running images through the network
-        outputs = net(images)
+        class_logits, reconstructed = net(images)
         # the class with the highest energy is what we choose as prediction
-        _, predicted = torch.max(outputs, 1)
+        _, predicted = torch.max(class_logits, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
 
@@ -85,11 +64,13 @@ correct_pred = {classname: 0 for classname in classes}
 total_pred = {classname: 0 for classname in classes}
 
 # again no gradients needed
+reconstructed_images = []
 with torch.no_grad():
     for data in testloader:
         images, labels = data
-        outputs = net(images)
-        _, predictions = torch.max(outputs, 1)
+        class_logits, reconstructed = net(images)
+        reconstructed_images.append(reconstructed)
+        _, predictions = torch.max(class_logits, 1)
         # collect the correct predictions for each class
         for label, prediction in zip(labels, predictions):
             if label == prediction:
@@ -109,13 +90,19 @@ def imshow(img, ax):
     ax.imshow(np.transpose(npimg, (1, 2, 0)))
     ax.axis('off')
 
-# Plot the batch in a grid
-fig, axes = plt.subplots(1, 4, figsize=(12, 3))
-for idx, ax in enumerate(axes.flat):
-    imshow(images[idx], ax)
+batch_size = images.shape[0]  # actual number of images in this batch
+
+fig, axes = plt.subplots(2, batch_size, figsize=(3 * batch_size, 6))
+
+for idx in range(batch_size):
+    imshow(images[idx], axes[0, idx])
     true_label = classes[labels[idx]]
     pred_label = classes[predicted[idx]]
     color = 'green' if true_label == pred_label else 'red'
-    ax.set_title(f"True: {true_label}\nPred: {pred_label}", color=color)
+    axes[0, idx].set_title(f"True: {true_label}\nPred: {pred_label}", color=color)
+
+    imshow(reconstructed[idx].detach(), axes[1, idx])
+    axes[1, idx].set_title("Reconstructed")
+
 plt.tight_layout()
 plt.show()
